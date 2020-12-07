@@ -1,0 +1,2 @@
+# wemail2mbox
+WeMailのメールデータをmbox形式に変換するツール

@@ -1,73 +1,61 @@
-# ========== WeMail ¨ mbox •ÏŠ·ƒc[ƒ‹ ==========
+# ========== WeMail â†’ mbox å¤‰æ›ãƒ„ãƒ¼ãƒ« ==========
 
   use strict;
   use warnings;
-  use IO::Handle;
+  use utf8;
+  use Win32::LongPath;
+  use Encode;
 
   our ($kgr);
 
+  binmode STDOUT, ':crlf:encoding(cp932)';
+  binmode STDERR, ':crlf:encoding(cp932)';
+  binmode STDIN, ':crlf:encoding(cp932)';
+
   if (@ARGV <= 0) {
-    $kgr = '\\';
+    $kgr = "\\";
   }
   elsif (@ARGV == 1) {
-    $kgr = $ARGV[0];
+    $kgr = Encode::decode('cp932', $ARGV[0]);
   }
   else {
-    print STDERR 'Usage: ' . $0 . " ‹æØ‚è•¶š\n";
+    print STDERR 'Usage: ' . Encode::decode('cp932', $0) . " åŒºåˆ‡ã‚Šæ–‡å­—\n";
     exit 1;
   }
 
   &cur('.');
 
 
-# $_[0] ”z‰º(ƒTƒuƒtƒHƒ‹ƒ_‚à)‚Ì *.wem ‚ğ•ÏŠ·‚µ‚Ä mbox ‚É‚·‚é
+# $_[0] é…ä¸‹(ã‚µãƒ–ãƒ•ã‚©ãƒ«ãƒ€ã‚‚)ã® *.wem ã‚’å¤‰æ›ã—ã¦ mbox ã«ã™ã‚‹
 sub cur {
   my ($cwd) = @_;
   my ($file, $wem, $dh);
 
   $wem = 0;
-  $dh = IO::Handle -> new();
-  unless (opendir $dh, $cwd) {
-    warn "ƒtƒHƒ‹ƒ_ $cwd ‚ğŠJ‚¯‚Ü‚¹‚ñ\n";
+  $dh = Win32::LongPath -> new();
+  unless ($dh -> opendirL($cwd)) {
+    print STDERR "ãƒ•ã‚©ãƒ«ãƒ€ $cwd ã‚’é–‹ã‘ã¾ã›ã‚“\n";
     return;
   }
-  while ($file = readdir $dh) {
+  foreach $file ($dh -> readdirL()) {
     next if ($file eq '.' || $file eq '..');
-    if (-d $cwd . '\\' . $file) {
-      &cur($cwd . '\\' . $file);
+    if (testL('d', $cwd . "\\" . $file)) {
+      &cur($cwd . "\\" . $file);
     }
     elsif (substr($file, -4) eq '.wem') {
       $wem = 1;
     }
   }
-  closedir $dh;
+  $dh -> closedirL();
   if ($wem) {
     my ($res, $mf, $fpr);
-    ($res, $mf) = (&mbox($cwd), $cwd . '\\mbox');
+    ($res, $mf) = (&mbox($cwd), $cwd . "\\mbox");
     if ($mf =~ /^\.?\\(.*)/) { $mf = $1; }
 
-    { # ƒtƒHƒ‹ƒ_‚Ì‹æØ‚è•¶š‚ğ•ÏŠ·
-      my ($str);
-      $str = $mf;
-      $mf = '';
-      while ($str ne '') {
-        my ($c, $code);
-        $c = substr($str, 0, 1);
-        ($str, $code) = (substr($str, 1), ord($c));
-        if (0x80 <= $code && $code < 0xa0 || 0xe0 <= $code) {
-          if ($str ne '') {
-            $c .= substr($str, 0, 1);
-            $str = substr($str, 1);
-          }
-        }
-        $c = $kgr if ($c eq '\\');
-        $mf .= $c;
-      }
-    }
+    $mf =~ s/\\/$kgr/g;  # ãƒ•ã‚©ãƒ«ãƒ€ã®åŒºåˆ‡ã‚Šæ–‡å­—ã‚’å¤‰æ›
 
-    $fpr = IO::Handle -> new();
-    unless (open $fpr, '> ' . $mf) {
-      warn "ƒtƒ@ƒCƒ‹ $mf ‚Ì‘‚«‚İ‚É¸”s‚µ‚Ü‚µ‚½\n";
+    unless (openL(\$fpr, '>:encoding(cp932)', $mf)) {
+      print STDERR "ãƒ•ã‚¡ã‚¤ãƒ« $mf ã®æ›¸ãè¾¼ã¿ã«å¤±æ•—ã—ã¾ã—ãŸ\n";
       return;
     }
     print $fpr $res;
@@ -77,7 +65,7 @@ sub cur {
 }
 
 
-# $_[0] ’¼‰º‚Ì *.wem ‚ğ•ÏŠ·‚µ‚Ä mbox ‚É‚·‚é
+# $_[0] ç›´ä¸‹ã® *.wem ã‚’å¤‰æ›ã—ã¦ mbox ã«ã™ã‚‹
 sub mbox {
   my ($cwd) = @_;
   my (@lt, $fil, $otz, $dt, $dhw);
@@ -90,21 +78,20 @@ sub mbox {
   ($otz, $oy, $omo, $od, $oh) = (0, $cy, $lt[4] + 1, $lt[3], $lt[2]);
   ($omi, $os, $oyb, $ofr) = ($lt[1], $lt[0], $lt[6], 'daemon@localhost');
 
-  $dhw = IO::Handle -> new();
-  unless (opendir $dhw, $cwd) {
-    warn "ƒtƒHƒ‹ƒ_ $cwd ‚ğŠJ‚¯‚Ü‚¹‚ñ\n";
+  $dhw = Win32::LongPath -> new();
+  unless ($dhw -> opendirL($cwd)) {
+    print STDERR "ãƒ•ã‚©ãƒ«ãƒ€ $cwd ã‚’é–‹ã‘ã¾ã›ã‚“\n";
     return '';
   }
-  while ($fil = readdir $dhw) {
-    next if ($fil eq '.' || $fil eq '..' || -d $cwd . '\\' . $fil);
+  foreach $fil ($dhw -> readdirL()) {
+    next if ($fil eq '.' || $fil eq '..' || testL('d', $cwd . "\\" . $fil));
     if (substr($fil, -4) eq '.wem') {
       my ($naiyou, $buf, $yb, $from, $meid, $myb, $fpi);
 
-      $fil = $cwd . '\\' . $fil;
+      $fil = $cwd . "\\" . $fil;
 
-      $fpi = IO::Handle -> new();
-      unless (open $fpi, '< ' . $fil) {
-        warn "ƒtƒ@ƒCƒ‹ $fil ‚Ì“Ç‚İo‚µ‚É¸”s‚µ‚Ü‚µ‚½\n";
+      unless (openL(\$fpi, '<:encoding(cp932)', $fil)) {
+        print STDERR "ãƒ•ã‚¡ã‚¤ãƒ« $fil ã®èª­ã¿å‡ºã—ã«å¤±æ•—ã—ã¾ã—ãŸ\n";
         next;
       }
 
@@ -290,9 +277,9 @@ sub mbox {
 
     }
   }
-  closedir $dhw;
+  $dhw -> closedirL();
 
-  # Œ‹‰Ê•¶š—ñ‚ğ¶¬
+  # çµæœæ–‡å­—åˆ—ã‚’ç”Ÿæˆ
   $fil = '';
   foreach $dt (sort keys %zen) { $fil .= ($zen{$dt} . "\n"); }
 
@@ -307,9 +294,9 @@ sub mbox {
         $oy, $omo, $od, $oh, $omi, $os);
     }
 
-    unless ($from) { $from = $ofr; }
+    $from = $ofr unless ($from);
 
-    if ($yb eq '') { $yb = $oyb; }
+    $yb = $oyb if ($yb eq '');
 
     $fh = 'From ' . $from . ' ';
     $fh .= substr("SunMonTueWedThuFriSat", $yb * 3, 3) . ' ';
@@ -338,7 +325,7 @@ sub mbox {
     $w = int($c / 4) - 2 * $c + int($y / 4)
       + $y + int(26 * ($m + 1) / 10) + $d;
 
-    return ($w + 6) % 7;    # “ú:0 “y:6
+    return ($w + 6) % 7;    # æ—¥:0 åœŸ:6
   }
 
   sub tomorrow {
